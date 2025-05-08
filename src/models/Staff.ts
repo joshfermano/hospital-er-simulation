@@ -20,6 +20,8 @@ export class Staff {
   }
 
   public isBusy(): boolean {
+    // WARNING: This method should be refactored to use the simulation time
+    // passed from the SimulationEngine for consistency, but for now we get it directly
     const currentTime = Date.now() / 1000;
     const busy = this.currentPatientId !== null && currentTime < this.busyUntil;
 

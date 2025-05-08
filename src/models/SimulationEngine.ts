@@ -158,27 +158,22 @@ export class SimulationEngine {
   }
 
   private update(): void {
-    // Get current time and calculate elapsed time since last update
     const now = Date.now() / 1000;
     const elapsed = now - this.lastUpdateTime;
 
-    // Update times
     this.currentTime = now;
     this.lastUpdateTime = now;
 
-    // Debug timing info
     console.log(
       `Update called, elapsed time: ${elapsed.toFixed(2)}s, simulation speed: ${
         this.simulationSpeed
       }`
     );
 
-    // Generate new patient arrivals based on arrival rate and elapsed time
     const arrivalRatePerSecond = this.arrivalRate / 3600;
     const expectedArrivals =
       arrivalRatePerSecond * elapsed * this.simulationSpeed;
 
-    // Use Poisson distribution to determine number of arrivals
     const actualArrivals = generatePoissonRandom(expectedArrivals);
 
     if (actualArrivals > 0) {
@@ -193,19 +188,14 @@ export class SimulationEngine {
       this.generateRandomPatient();
     }
 
-    // Process existing patients through the system
     this.processPatients();
 
-    // Update statistics
     this.updateStats();
 
-    // Notify all registered listeners about the state update
     this.notifyListeners();
   }
 
   private generateRandomPatient(): void {
-    // Generate random priority based on distribution
-    // Critical: 10%, Urgent: 30%, Standard: 60%
     let priority: PatientPriority;
     const rand = Math.random();
 
@@ -228,7 +218,7 @@ export class SimulationEngine {
   }
 
   private processPatients(): void {
-    // Log the current state of patients in the system
+    // Log the current state of  in the system
     const waitingCount = this.patients.filter(
       (p) => p.status === PatientStatus.WAITING
     ).length;
@@ -384,13 +374,24 @@ export class SimulationEngine {
         return a.arrivalTime - b.arrivalTime;
       });
 
-      // Find available receptionists
+      // Find available receptionists (using simulation time)
       const availableReceptionists = this.staff.filter(
-        (s) => s.role === StaffRole.RECEPTIONIST && !s.isBusy()
+        (s) =>
+          s.role === StaffRole.RECEPTIONIST &&
+          (s.currentPatientId === null || this.currentTime >= s.busyUntil)
       );
 
+      // Release any receptionists that are done but still have patients
+      for (const receptionist of availableReceptionists) {
+        if (receptionist.currentPatientId !== null) {
+          receptionist.releasePatient();
+        }
+      }
+
       console.log(
-        `Found ${availableReceptionists.length} available receptionists`
+        `Found ${availableReceptionists.length} available receptionists (${
+          this.staff.filter((s) => s.role === StaffRole.RECEPTIONIST).length
+        } total)`
       );
 
       // Assign patients to available receptionists
@@ -420,14 +421,19 @@ export class SimulationEngine {
         patient.status = PatientStatus.WITH_RECEPTIONIST;
 
         // Assign patient to receptionist with the calculated processing time
-        receptionist.assignPatient(patient, registrationTime);
+        // Use the simulation's current time for consistency
+        const processingTimeSeconds = registrationTime * 60;
+        receptionist.currentPatientId = patient.id;
+        receptionist.busyUntil = this.currentTime + processingTimeSeconds;
 
         console.log(
           `Assigned patient ${
             patient.id
           } (${patient.getPriorityText()}) to receptionist ${
             receptionist.id
-          } for ${registrationTime.toFixed(1)} minutes`
+          } for ${registrationTime.toFixed(1)} minutes until ${new Date(
+            (this.currentTime + processingTimeSeconds) * 1000
+          ).toTimeString()}`
         );
       }
     }
@@ -437,6 +443,11 @@ export class SimulationEngine {
     // Find patients waiting for nurse
     const waitingForNursePatients = this.patients.filter(
       (p) => p.status === PatientStatus.WAITING_FOR_NURSE
+    );
+
+    // Log the number of patients waiting for nurse
+    console.log(
+      `Found ${waitingForNursePatients.length} patients waiting for nurse`
     );
 
     // Sort by priority first, then by arrival time
@@ -449,8 +460,25 @@ export class SimulationEngine {
 
     // Find available nurses
     const availableNurses = this.staff.filter(
-      (s) => s.role === StaffRole.NURSE && !s.isBusy()
+      (s) =>
+        s.role === StaffRole.NURSE &&
+        // Check directly against currentTime and busyUntil instead of using isBusy()
+        (s.currentPatientId === null || this.currentTime >= s.busyUntil)
     );
+
+    // Log the number of available nurses
+    console.log(
+      `Found ${availableNurses.length} available nurses (${
+        this.staff.filter((s) => s.role === StaffRole.NURSE).length
+      } total nurses)`
+    );
+
+    // Release any nurses that are done
+    for (const nurse of availableNurses) {
+      if (nurse.currentPatientId !== null) {
+        nurse.releasePatient();
+      }
+    }
 
     // Assign patients to available nurses
     for (
@@ -476,7 +504,21 @@ export class SimulationEngine {
       }
 
       patient.status = PatientStatus.WITH_NURSE;
-      nurse.assignPatient(patient, nurseTime);
+
+      // Use the simulation's current time for consistency
+      const processingTimeSeconds = nurseTime * 60;
+      nurse.currentPatientId = patient.id;
+      nurse.busyUntil = this.currentTime + processingTimeSeconds;
+
+      console.log(
+        `Assigned patient ${
+          patient.id
+        } (${patient.getPriorityText()}) to nurse ${
+          nurse.id
+        } for ${nurseTime.toFixed(1)} minutes until ${new Date(
+          (this.currentTime + processingTimeSeconds) * 1000
+        ).toTimeString()}`
+      );
     }
   }
 
@@ -484,6 +526,11 @@ export class SimulationEngine {
     // Find patients waiting for doctor
     const waitingForDoctorPatients = this.patients.filter(
       (p) => p.status === PatientStatus.WAITING_FOR_DOCTOR
+    );
+
+    // Log the number of patients waiting for doctor
+    console.log(
+      `Found ${waitingForDoctorPatients.length} patients waiting for doctor`
     );
 
     // Sort by priority first, then arrival time
@@ -496,8 +543,25 @@ export class SimulationEngine {
 
     // Find available doctors
     const availableDoctors = this.staff.filter(
-      (s) => s.role === StaffRole.DOCTOR && !s.isBusy()
+      (s) =>
+        s.role === StaffRole.DOCTOR &&
+        // Check directly against currentTime and busyUntil instead of using isBusy()
+        (s.currentPatientId === null || this.currentTime >= s.busyUntil)
     );
+
+    // Log the number of available doctors
+    console.log(
+      `Found ${availableDoctors.length} available doctors (${
+        this.staff.filter((s) => s.role === StaffRole.DOCTOR).length
+      } total doctors)`
+    );
+
+    // Release any doctors that are done
+    for (const doctor of availableDoctors) {
+      if (doctor.currentPatientId !== null) {
+        doctor.releasePatient();
+      }
+    }
 
     // Assign patients to available doctors
     for (
@@ -523,7 +587,21 @@ export class SimulationEngine {
       }
 
       patient.status = PatientStatus.WITH_DOCTOR;
-      doctor.assignPatient(patient, doctorTime);
+
+      // Use the simulation's current time for consistency
+      const processingTimeSeconds = doctorTime * 60;
+      doctor.currentPatientId = patient.id;
+      doctor.busyUntil = this.currentTime + processingTimeSeconds;
+
+      console.log(
+        `Assigned patient ${
+          patient.id
+        } (${patient.getPriorityText()}) to doctor ${
+          doctor.id
+        } for ${doctorTime.toFixed(1)} minutes until ${new Date(
+          (this.currentTime + processingTimeSeconds) * 1000
+        ).toTimeString()}`
+      );
     }
   }
 
