@@ -1,10 +1,6 @@
 import { Patient, PatientPriority, PatientStatus } from './Patient';
 import { Staff, StaffRole } from './Staff';
-import {
-  generateExponentialTime,
-  generatePoissonRandom,
-  weightedCoinToss,
-} from '../utils/random';
+import { generatePoissonRandom } from '../utils/random';
 
 export interface SimulationStats {
   totalPatients: number;
@@ -605,14 +601,7 @@ export class SimulationEngine {
     }
   }
 
-  private processDoctorPatients(): void {
-    // This function can be used to process post-doctor actions
-    // Already handled in releaseFinishedStaff
-  }
-
   private removeTreatedPatients(): void {
-    // Optionally remove treated patients from the list
-    // For stats purposes, we're keeping them around (let's limit to the last 100)
     const treatedPatients = this.patients.filter(
       (p) => p.status === PatientStatus.TREATED
     );
@@ -677,10 +666,6 @@ export class SimulationEngine {
         this.stats.staffUtilization[role] = 0;
       }
     }
-  }
-
-  private findStaffWithPatient(patientId: number): Staff | undefined {
-    return this.staff.find((s) => s.currentPatientId === patientId);
   }
 
   private findPatientById(id: number): Patient | undefined {

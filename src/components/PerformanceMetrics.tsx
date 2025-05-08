@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import type { SimulationStats } from '../models/SimulationEngine';
 import { formatTime, formatPercentage } from '../utils/statistics';
-import { StaffRole } from '../models/Staff';
 
 interface PerformanceMetricsProps {
   stats: SimulationStats;
