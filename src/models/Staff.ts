@@ -16,25 +16,49 @@ export class Staff {
   constructor(role: StaffRole) {
     this.id = ++Staff.lastId;
     this.role = role;
+    console.log(`Created new staff member: ${this.id}, role: ${role}`);
   }
 
   public isBusy(): boolean {
-    return this.currentPatientId !== null;
+    const currentTime = Date.now() / 1000;
+    const busy = this.currentPatientId !== null && currentTime < this.busyUntil;
+
+    if (this.currentPatientId !== null) {
+      const timeRemaining = Math.max(0, this.busyUntil - currentTime);
+      console.log(
+        `Staff ${this.id} (${
+          this.role
+        }) busy status: ${busy}, time remaining: ${timeRemaining.toFixed(1)}s`
+      );
+    }
+
+    return busy;
   }
 
   public isDone(currentTime: number): boolean {
-    return this.isBusy() && currentTime >= this.busyUntil;
+    return this.currentPatientId !== null && currentTime >= this.busyUntil;
   }
 
   public assignPatient(
     patient: { id: number },
     processingTimeMinutes: number
   ): void {
+    const processingTimeSeconds = processingTimeMinutes * 60;
+
     this.currentPatientId = patient.id;
-    this.busyUntil = Date.now() / 1000 + processingTimeMinutes * 60;
+    this.busyUntil = Date.now() / 1000 + processingTimeSeconds;
+
+    console.log(
+      `Staff ${this.id} (${this.role}) assigned patient ${patient.id}, ` +
+        `processing time: ${processingTimeMinutes.toFixed(1)} minutes, ` +
+        `busy until: ${new Date(this.busyUntil * 1000).toTimeString()}`
+    );
   }
 
   public releasePatient(): void {
+    console.log(
+      `Staff ${this.id} (${this.role}) released patient ${this.currentPatientId}`
+    );
     this.currentPatientId = null;
   }
 

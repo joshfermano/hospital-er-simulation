@@ -1,8 +1,8 @@
-// src/hooks/useSimulation.ts
-
 import { useState, useEffect, useCallback } from 'react';
-import { SimulationEngine } from '../models/SimulationEngine';
-import type { SimulationStats } from '../models/SimulationEngine';
+import {
+  SimulationEngine,
+  type SimulationStats,
+} from '../models/SimulationEngine';
 import { Patient, PatientPriority } from '../models/Patient';
 import { Staff, StaffRole } from '../models/Staff';
 
@@ -22,15 +22,28 @@ export function useSimulation() {
   // Initialize the simulation
   useEffect(() => {
     // Add initial staff
-    simulationEngine.addStaff(StaffRole.DOCTOR, 2);
-    simulationEngine.addStaff(StaffRole.NURSE, 3);
-    simulationEngine.addStaff(StaffRole.RECEPTIONIST, 1);
+    simulationEngine.addStaff(StaffRole.DOCTOR, 6);
+    simulationEngine.addStaff(StaffRole.NURSE, 6);
+    simulationEngine.addStaff(StaffRole.RECEPTIONIST, 2);
 
     // Set up update callback
     simulationEngine.onUpdate(() => {
-      setPatients([...simulationEngine.getPatients()]);
-      setStaff([...simulationEngine.getStaff()]);
-      setStats({ ...simulationEngine.getStats() });
+      console.log('Simulation update triggered');
+      // Create deep copies of the state objects to ensure React detects changes
+      const updatedPatients = [...simulationEngine.getPatients()];
+      const updatedStaff = [...simulationEngine.getStaff()];
+      const updatedStats = { ...simulationEngine.getStats() };
+
+      console.log('Updated stats:', {
+        totalPatients: updatedStats.totalPatients,
+        treatedPatients: updatedStats.treatedPatients,
+        averageWaitTime: updatedStats.averageWaitTime / 60, // Convert to minutes for readability
+        staffUtilization: updatedStats.staffUtilization,
+      });
+
+      setPatients(updatedPatients);
+      setStaff(updatedStaff);
+      setStats(updatedStats);
     });
 
     // Initial state update
@@ -39,11 +52,9 @@ export function useSimulation() {
 
     return () => {
       // Cleanup
-      if (isRunning) {
-        simulationEngine.pause();
-      }
+      simulationEngine.pause();
     };
-  }, [simulationEngine]); // Fixed: removed isRunning from dependency array to avoid cleanup issues
+  }, [simulationEngine]);
 
   // Handle changes to arrival rate
   useEffect(() => {
@@ -67,9 +78,11 @@ export function useSimulation() {
 
   const resetSimulation = useCallback(() => {
     simulationEngine.reset();
-    simulationEngine.addStaff(StaffRole.DOCTOR, 2);
-    simulationEngine.addStaff(StaffRole.NURSE, 3);
-    simulationEngine.addStaff(StaffRole.RECEPTIONIST, 1);
+    // Add initial staff after reset
+    simulationEngine.addStaff(StaffRole.DOCTOR, 6);
+    simulationEngine.addStaff(StaffRole.NURSE, 6);
+    simulationEngine.addStaff(StaffRole.RECEPTIONIST, 2);
+
     setPatients([...simulationEngine.getPatients()]);
     setStaff([...simulationEngine.getStaff()]);
     setStats({ ...simulationEngine.getStats() });
@@ -98,8 +111,6 @@ export function useSimulation() {
   const addPatient = useCallback(
     (priority: PatientPriority) => {
       simulationEngine.manuallyAddPatient(priority);
-      setPatients([...simulationEngine.getPatients()]);
-      setStats({ ...simulationEngine.getStats() });
     },
     [simulationEngine]
   );

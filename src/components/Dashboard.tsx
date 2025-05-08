@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import PatientQueue from './PatientQueue';
 import SimulationControls from './SimulationControls';
 import StaffManagement from './StaffManagement';
@@ -6,6 +6,7 @@ import PerformanceMetrics from './PerformanceMetrics';
 import { Staff, StaffRole } from '../models/Staff';
 import { Patient, PatientPriority } from '../models/Patient';
 import type { SimulationStats } from '../models/SimulationEngine';
+import { formatTime } from '../utils/statistics';
 
 interface DashboardProps {
   patients: Patient[];
@@ -40,6 +41,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   removeStaff,
   addPatient,
 }) => {
+  useEffect(() => {
+    if (stats.treatedPatients > 0) {
+      console.log('Stats:', {
+        treatedPatients: stats.treatedPatients,
+        averageWaitTime: stats.averageWaitTime,
+        formattedTime: formatTime(stats.averageWaitTime / 60),
+      });
+    }
+  }, [stats.treatedPatients, stats.averageWaitTime]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-8">

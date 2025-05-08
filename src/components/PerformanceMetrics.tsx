@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { SimulationStats } from '../models/SimulationEngine';
 import { formatTime, formatPercentage } from '../utils/statistics';
 import { StaffRole } from '../models/Staff';
@@ -8,6 +8,46 @@ interface PerformanceMetricsProps {
 }
 
 const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ stats }) => {
+  // Debug log when stats change
+  useEffect(() => {
+    console.log('PerformanceMetrics received stats update:', {
+      totalPatients: stats.totalPatients,
+      treatedPatients: stats.treatedPatients,
+      averageWaitTime: stats.averageWaitTime,
+      staffUtilization: stats.staffUtilization,
+    });
+  }, [stats]);
+
+  const averageWaitTimeFormatted = React.useMemo(() => {
+    return stats.averageWaitTime > 0
+      ? formatTime(stats.averageWaitTime / 60)
+      : '0m';
+  }, [stats.averageWaitTime]);
+
+  const maxWaitTimeFormatted = React.useMemo(() => {
+    return stats.maxWaitTime > 0 ? formatTime(stats.maxWaitTime / 60) : '0s';
+  }, [stats.maxWaitTime]);
+
+  const throughputFormatted = React.useMemo(() => {
+    return `${stats.throughput.toFixed(2)} patients/hour`;
+  }, [stats.throughput]);
+
+  // Get utilization percentages with fallbacks for undefined values
+  const doctorUtilization =
+    typeof stats.staffUtilization.DOCTOR === 'number'
+      ? stats.staffUtilization.DOCTOR
+      : 0;
+
+  const nurseUtilization =
+    typeof stats.staffUtilization.NURSE === 'number'
+      ? stats.staffUtilization.NURSE
+      : 0;
+
+  const receptionistUtilization =
+    typeof stats.staffUtilization.RECEPTIONIST === 'number'
+      ? stats.staffUtilization.RECEPTIONIST
+      : 0;
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -23,7 +63,7 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ stats }) => {
         />
         <MetricCard
           title="Average Wait Time"
-          value={formatTime(stats.averageWaitTime / 60)}
+          value={averageWaitTimeFormatted}
           icon="⏱️"
         />
         <MetricCard
@@ -40,17 +80,17 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ stats }) => {
         <div className="space-y-4">
           <UtilizationBar
             label="Doctors"
-            percentage={stats.staffUtilization[StaffRole.DOCTOR]}
+            percentage={doctorUtilization}
             color="bg-stone-700"
           />
           <UtilizationBar
             label="Nurses"
-            percentage={stats.staffUtilization[StaffRole.NURSE]}
+            percentage={nurseUtilization}
             color="bg-stone-600"
           />
           <UtilizationBar
             label="Receptionists"
-            percentage={stats.staffUtilization[StaffRole.RECEPTIONIST]}
+            percentage={receptionistUtilization}
             color="bg-stone-500"
           />
         </div>
@@ -59,15 +99,11 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ stats }) => {
       <div className="mt-2 border-t border-stone-100 pt-4">
         <p className="text-xs text-stone-500 flex justify-between py-1">
           <span>Throughput</span>
-          <span className="font-medium">
-            {stats.throughput.toFixed(2)} patients/hour
-          </span>
+          <span className="font-medium">{throughputFormatted}</span>
         </p>
         <p className="text-xs text-stone-500 flex justify-between py-1">
           <span>Max Wait Time</span>
-          <span className="font-medium">
-            {formatTime(stats.maxWaitTime / 60)}
-          </span>
+          <span className="font-medium">{maxWaitTimeFormatted}</span>
         </p>
       </div>
     </div>
@@ -103,18 +139,21 @@ const UtilizationBar: React.FC<UtilizationBarProps> = ({
   percentage,
   color,
 }) => {
+  // Ensure percentage is a valid number
+  const safePercentage = isNaN(percentage) ? 0 : percentage;
+
   return (
     <div>
       <div className="flex justify-between items-center text-xs mb-1.5">
         <span className="text-stone-700">{label}</span>
         <span className="font-medium text-stone-800">
-          {formatPercentage(percentage)}
+          {formatPercentage(safePercentage)}
         </span>
       </div>
       <div className="w-full bg-stone-200 rounded-full h-1.5">
         <div
-          className={`${color} h-1.5 rounded-full`}
-          style={{ width: `${percentage * 100}%` }}></div>
+          className={`${color} h-1.5 rounded-full transition-all duration-300 ease-in-out`}
+          style={{ width: `${Math.max(safePercentage * 100, 0.5)}%` }}></div>
       </div>
     </div>
   );
