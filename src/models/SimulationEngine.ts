@@ -40,16 +40,24 @@ export class SimulationEngine {
   };
 
   constructor() {
-    // Initialize with empty state
+    this.startTime = Date.now() / 1000;
+    this.currentTime = this.startTime;
+    this.lastUpdateTime = this.startTime;
   }
 
   public start(): void {
     if (this.intervalId !== null) return;
 
     this.lastUpdateTime = Date.now() / 1000;
-    this.intervalId = window.setInterval(
-      () => this.update(),
-      1000 / this.simulationSpeed
+
+    // Base update interval of 1000ms (1 second), inversely adjusted by speed
+    // For speeds > 5, we'll cap at a minimum of 100ms interval for UI responsiveness
+    const intervalMs = Math.max(100, 1000 / this.simulationSpeed);
+
+    this.intervalId = window.setInterval(() => this.update(), intervalMs);
+
+    console.log(
+      `Starting simulation with update interval: ${intervalMs}ms (${this.simulationSpeed}x speed)`
     );
   }
 
@@ -100,9 +108,15 @@ export class SimulationEngine {
     // Restart the timer with new speed if running
     if (this.intervalId !== null) {
       window.clearInterval(this.intervalId);
-      this.intervalId = window.setInterval(
-        () => this.update(),
-        1000 / this.simulationSpeed
+
+      // Base update interval of 1000ms (1 second), inversely adjusted by speed
+      // For speeds > 5, we'll cap at a minimum of 100ms interval for UI responsiveness
+      const intervalMs = Math.max(100, 1000 / this.simulationSpeed);
+
+      this.intervalId = window.setInterval(() => this.update(), intervalMs);
+
+      console.log(
+        `Adjusted simulation speed to ${speed}x with update interval: ${intervalMs}ms`
       );
     }
   }
@@ -155,20 +169,36 @@ export class SimulationEngine {
 
   private update(): void {
     const now = Date.now() / 1000;
-    const elapsed = now - this.lastUpdateTime;
+    const realElapsed = now - this.lastUpdateTime;
 
-    this.currentTime = now;
+    // For very high speeds (>10x), we'll process multiple updates in one cycle
+    const iterationCount =
+      this.simulationSpeed > 10 ? Math.floor(this.simulationSpeed / 5) : 1;
+    const iterationElapsed = realElapsed / iterationCount;
+
+    for (let i = 0; i < iterationCount; i++) {
+      this.processSimulationStep(now, iterationElapsed);
+    }
+  }
+
+  private processSimulationStep(now: number, realElapsed: number): void {
+    // Scale elapsed time by simulation speed for time-dependent calculations
+    const simulatedElapsed = realElapsed * this.simulationSpeed;
+
+    // Update simulation time based on simulated elapsed time
+    this.currentTime += simulatedElapsed;
     this.lastUpdateTime = now;
 
     console.log(
-      `Update called, elapsed time: ${elapsed.toFixed(2)}s, simulation speed: ${
-        this.simulationSpeed
-      }`
+      `Update step, real elapsed: ${realElapsed.toFixed(
+        2
+      )}s, simulated elapsed: ${simulatedElapsed.toFixed(
+        2
+      )}s, simulation speed: ${this.simulationSpeed}x`
     );
 
     const arrivalRatePerSecond = this.arrivalRate / 3600;
-    const expectedArrivals =
-      arrivalRatePerSecond * elapsed * this.simulationSpeed;
+    const expectedArrivals = arrivalRatePerSecond * simulatedElapsed;
 
     const actualArrivals = generatePoissonRandom(expectedArrivals);
 
@@ -268,7 +298,9 @@ export class SimulationEngine {
 
     // Log current time and staff status
     console.log(
-      `Current time: ${new Date(currentTime * 1000).toLocaleTimeString()}`
+      `Current simulation time: ${new Date(
+        currentTime * 1000
+      ).toLocaleTimeString()}`
     );
 
     // Check all staff members

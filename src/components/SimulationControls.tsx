@@ -180,7 +180,7 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
             id="simulation-speed"
             type="range"
             min="0.5"
-            max="10"
+            max="20"
             step="0.5"
             value={simulationSpeed}
             onChange={(e) => setSimulationSpeed(Number(e.target.value))}
@@ -188,8 +188,8 @@ const SimulationControls: React.FC<SimulationControlsProps> = ({
           />
           <div className="flex justify-between text-xs text-stone-500 mt-1.5">
             <span>0.5x</span>
-            <span>5x</span>
             <span>10x</span>
+            <span>20x</span>
           </div>
         </div>
       </div>
